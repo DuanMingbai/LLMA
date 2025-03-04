@@ -210,9 +210,16 @@ def add_noise(clean_wav, noise_wavs, noise_snr=0):
     mixed = mixed.astype(np.int16)
     return mixed
 
-def load_data(AUDIO_MAX_LENGTH, TEXT_MAX_LENGTH, langs=['en', 'ar', 'de', 'el', 'es', 'fr', 'it', 'pt', 'ru'],
-              muavic_root='/data/sls/scratch/roudi/datasets/muavic/', reduce_val=None, include_audio_lens=False,
-              AUDIO_MAX_LENGTH_VAL=480000, vc2=False, vc2_path='', lrs2=False, visible=False, task='transcribe'):
+def load_data(AUDIO_MAX_LENGTH, 
+              TEXT_MAX_LENGTH, 
+              langs=['en', 'ar', 'de', 'el', 'es', 'fr', 'it', 'pt', 'ru'], 
+              muavic_root='E:/dataset',
+              reduce_val=None, include_audio_lens=False,
+              AUDIO_MAX_LENGTH_VAL=480000, 
+              vc2=False, vc2_path='', 
+              lrs2=False, 
+              visible=False, 
+              task='transcribe'):
     # reduce_val: If not None, keep this number of samples from the validation set
     audio_transcript_pair_list = {'train':[], 'valid':[], 'test':[]}
     for lang in langs:
@@ -233,8 +240,10 @@ def load_data(AUDIO_MAX_LENGTH, TEXT_MAX_LENGTH, langs=['en', 'ar', 'de', 'el', 
                         tsv_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', 'train_muavic_vc2.tsv')
                         txt_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', 'train_muavic_vc2.{}'.format(lang))
                     else:
-                        tsv_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.tsv'.format(split))
-                        txt_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.{}'.format(split, lang))
+                        # tsv_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.tsv'.format(split))
+                        # txt_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.{}'.format(split, lang))
+                        tsv_fn = os.path.join(muavic_root, 'muavic', lang, '{}.tsv'.format(split))
+                        txt_fn = os.path.join(muavic_root, 'muavic', lang, '{}.{}'.format(split, lang))
                 elif task == 'En-X': # EN-X translation                    
                     tsv_fn = os.path.join(muavic_root, 'muavic', 'en', lang, '{}.tsv'.format(split))
                     txt_fn = os.path.join(muavic_root, 'muavic', 'en', lang, '{}.{}'.format(split, lang))
@@ -242,17 +251,22 @@ def load_data(AUDIO_MAX_LENGTH, TEXT_MAX_LENGTH, langs=['en', 'ar', 'de', 'el', 
                     tsv_fn = os.path.join(muavic_root, 'muavic', lang, 'en', '{}.tsv'.format(split))
                     txt_fn = os.path.join(muavic_root, 'muavic', lang, 'en', '{}.en'.format(split))
                 
-            with open(tsv_fn) as tsv:
-                with open(txt_fn) as txt:
+            with open(tsv_fn, encoding='utf-8') as tsv:
+                with open(txt_fn, encoding='utf-8') as txt:
                     audio_lns = tsv.readlines()[1:]
                     txt_lns = txt.readlines()
-                    # audio path, audio length, text, text length, video_length
-                    wav_fns = [(audio.strip().split('\t')[2],  int(audio.strip().split('\t')[-1]), txt.strip(), 
-                                len(txt.strip()), int(audio.strip().split('\t')[-2])) for audio, txt in zip(audio_lns, txt_lns)]
-                    pre_video_check = len(wav_fns)
-                    wav_fns =  list(filter(lambda x: x[4] > 0, wav_fns))
-                    post_video_check = len(wav_fns)
-                    print("Removed {} samples with missing video (before filtering lengths)".format(pre_video_check - post_video_check))
+                    # audio_path, audio_length, text, text_length, video_length
+                    wav_fns = [(audio.strip().split('\t')[2],  
+                                int(audio.strip().split('\t')[-1]), 
+                                txt.strip(), 
+                                len(txt.strip()), 
+                                int(audio.strip().split('\t')[-2])) 
+                                for audio, txt in zip(audio_lns, txt_lns)]
+                    # pre_video_check = len(wav_fns)
+                    # Check if the video length is greater than 0 
+                    # wav_fns =  list(filter(lambda x: x[4] > 0, wav_fns))
+                    # post_video_check = len(wav_fns)
+                    # print("Removed {} samples with missing video (before filtering lengths)".format(pre_video_check - post_video_check))
                     pre_video_check = len(wav_fns)
                     wav_fns =  list(filter(lambda x: x[3] > 0, wav_fns))
                     post_video_check = len(wav_fns)
@@ -264,6 +278,7 @@ def load_data(AUDIO_MAX_LENGTH, TEXT_MAX_LENGTH, langs=['en', 'ar', 'de', 'el', 
                     elif split == 'valid': # whisper pos. embedding only up to 30s long, don't filter test
                         wav_fns =  list(filter(lambda x: x[1] <= AUDIO_MAX_LENGTH_VAL, wav_fns))
                     print("Total hours {} : {}".format(split, sum([int(x[1]) for x in wav_fns]) / 16000 / 3600))
+
                     if not include_audio_lens:
                         lang_filtered = [(lang, i[0], i[2]) for i in wav_fns]
                     else: 

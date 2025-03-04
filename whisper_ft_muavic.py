@@ -308,65 +308,75 @@ class WhisperModelModule(LightningModule):
                           collate_fn=WhisperDataCollatorWhithPadding()
                           )
 
-cfg_yaml = sys.argv[1]
-with open(cfg_yaml, 'r') as file:
-    dct = yaml.safe_load(file)
-    cfg = types.SimpleNamespace(**dct)
+if __name__ == '__main__':
+    cfg_yaml = sys.argv[1]
+    with open(cfg_yaml, 'r') as file:
+        dct = yaml.safe_load(file)
+        cfg = types.SimpleNamespace(**dct)
 
-print(cfg)
-print("audio max length: {}".format(cfg.audio_max_length))
+    print(cfg)
+    print("audio max length: {}".format(cfg.audio_max_length))
 
-tflogger, checkpoint_callback, callback_list = setup_logging_and_checkpoint(cfg.log_output_dir, 
-                                                                            cfg.check_output_dir, 
-                                                                            cfg.train_name, 
-                                                                            cfg.train_id,
-                                                                            cfg.monitor,)
-if cfg.lang == 'multi-all':
-    audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, 
-                                           ['en', 'ar', 'de', 'el', 'es', 'fr', 'it', 'pt', 'ru'],
-                                            reduce_val=300, include_audio_lens=True)
-elif cfg.lang == 'multi':
-    audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, 
-                                            ['en', 'es', 'fr', 'it', 'pt'],
-                                            reduce_val=300, include_audio_lens=True, vc2=cfg.vc2, vc2_path=cfg.vc2_path)
-elif cfg.lang == 'multi_en-st':
-    audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, 
-                                           ['en', 'el', 'es', 'fr', 'it', 'pt', 'ru'],
-                                           reduce_val=200, include_audio_lens=True, task='En-X')
-elif 'lrs2' in cfg.lang:
-    audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, ['en'], 
-                                        include_audio_lens=True, lrs2=True)
-else:
-    audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, [cfg.lang], 
-                                           include_audio_lens=True, vc2=cfg.vc2, vc2_path=cfg.vc2_path)
-model = WhisperModelModule(cfg, cfg.model_name, cfg.lang, audio_transcript_pair_list['train'], 
-                                                          audio_transcript_pair_list['valid'],
-                                                          audio_transcript_pair_list['test'])
+    tflogger, checkpoint_callback, callback_list = setup_logging_and_checkpoint(cfg.log_output_dir, 
+                                                                                cfg.check_output_dir, 
+                                                                                cfg.train_name, 
+                                                                                cfg.train_id,
+                                                                                cfg.monitor,)
+    if cfg.lang == 'multi-all':
+        audio_transcript_pair_list = load_data(cfg.audio_max_length, 
+                                            cfg.text_max_length, 
+                                            ['en', 'ar', 'de', 'el', 'es', 'fr', 'it', 'pt', 'ru'],
+                                                reduce_val=300, include_audio_lens=True)
+    elif cfg.lang == 'multi':
+        audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, 
+                                                ['en', 'es', 'fr', 'it', 'pt'],
+                                                reduce_val=300, include_audio_lens=True, vc2=cfg.vc2, vc2_path=cfg.vc2_path)
+    elif cfg.lang == 'multi_en-st':
+        audio_transcript_pair_list = load_data(cfg.audio_max_length, cfg.text_max_length, 
+                                            ['en', 'el', 'es', 'fr', 'it', 'pt', 'ru'],
+                                            reduce_val=200, include_audio_lens=True, task='En-X')
+    elif 'lrs2' in cfg.lang:
+        audio_transcript_pair_list = load_data(cfg.audio_max_length, 
+                                               cfg.text_max_length, ['en'], 
+                                               include_audio_lens=True, 
+                                               lrs2=True)
+    else:
+        audio_transcript_pair_list = load_data(cfg.audio_max_length, 
+                                            cfg.text_max_length, 
+                                            [cfg.lang], 
+                                            include_audio_lens=True, 
+                                            vc2=cfg.vc2, 
+                                            vc2_path=cfg.vc2_path)
 
-trainer = Trainer(
-    precision=16,
-    accelerator="gpu",
-    max_steps=cfg.num_train_steps,
-    accumulate_grad_batches=cfg.gradient_accumulation_steps,
-    logger=tflogger,
-    callbacks=callback_list,
-    num_sanity_val_steps=0, # default is 2 batches, 0 to turn off
-    devices=cfg.num_devices,
-    val_check_interval=int(cfg.validate_every_n_batches * cfg.gradient_accumulation_steps), # validate after this number batches
-    check_val_every_n_epoch=None, # If None, validation will be done solely based on the number of training batches
-    reload_dataloaders_every_n_epochs=1, # shuffle the dataloader after an epoch
-    use_distributed_sampler=False, # implemented custom distributed trainer
-)
+    model = WhisperModelModule(cfg, cfg.model_name, cfg.lang, audio_transcript_pair_list['train'], 
+                                                            audio_transcript_pair_list['valid'],
+                                                            audio_transcript_pair_list['test'])
 
-print(cfg)
-resume_ckpt = f"{cfg.check_output_dir}/{cfg.train_id}/last.ckpt"
-if os.path.exists(resume_ckpt) and cfg.resume_training: # resume training, don't validate
-    trainer.fit(model, ckpt_path='last', val_dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
-                                                model.test_dataloader_noisy(), model.test_dataloader_clean()])
-else:
-    trainer.validate(model=model, dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
-                                                model.test_dataloader_noisy(), model.test_dataloader_clean()]) # validate before training
-    trainer.fit(model, val_dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
-                                                model.test_dataloader_noisy(), model.test_dataloader_clean()])
+    trainer = Trainer(
+        precision=16,
+        accelerator="gpu",
+        max_steps=cfg.num_train_steps,
+        accumulate_grad_batches=cfg.gradient_accumulation_steps,
+        logger=tflogger,
+        callbacks=callback_list,
+        num_sanity_val_steps=0, # default is 2 batches, 0 to turn off
+        devices=cfg.num_devices,
+        val_check_interval=int(cfg.validate_every_n_batches * cfg.gradient_accumulation_steps), # validate after this number batches
+        check_val_every_n_epoch=None, # If None, validation will be done solely based on the number of training batches
+        reload_dataloaders_every_n_epochs=1, # shuffle the dataloader after an epoch
+        use_distributed_sampler=False, # implemented custom distributed trainer
+    )
+
+    print(cfg)
+    # 断点续训
+    resume_ckpt = f"{cfg.check_output_dir}/{cfg.train_id}/last.ckpt"
+    if os.path.exists(resume_ckpt) and cfg.resume_training: # resume training, don't validate
+        trainer.fit(model, ckpt_path='last', val_dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
+                                                    model.test_dataloader_noisy(), model.test_dataloader_clean()])
+    else:
+        trainer.validate(model=model, dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
+                                                    model.test_dataloader_noisy(), model.test_dataloader_clean()]) # validate before training
+        trainer.fit(model, val_dataloaders=[model.val_dataloader_noisy(), model.val_dataloader_clean(),
+                                                    model.test_dataloader_noisy(), model.test_dataloader_clean()])
 
 
