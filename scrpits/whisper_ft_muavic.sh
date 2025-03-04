@@ -1,0 +1,1 @@
+python -u whisper_ft_muavic.py config/audio/audio_en-x_small.yaml

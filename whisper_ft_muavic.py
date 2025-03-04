@@ -344,6 +344,8 @@ if __name__ == '__main__':
         audio_transcript_pair_list = load_data(cfg.audio_max_length, 
                                             cfg.text_max_length, 
                                             [cfg.lang], 
+                                            # add path
+                                            muavic_root=cfg.muavic_root,
                                             include_audio_lens=True, 
                                             vc2=cfg.vc2, 
                                             vc2_path=cfg.vc2_path)

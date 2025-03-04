@@ -216,7 +216,8 @@ def load_data(AUDIO_MAX_LENGTH,
               muavic_root='E:/dataset',
               reduce_val=None, include_audio_lens=False,
               AUDIO_MAX_LENGTH_VAL=480000, 
-              vc2=False, vc2_path='', 
+              vc2=False,
+              vc2_path='', 
               lrs2=False, 
               visible=False, 
               task='transcribe'):
@@ -242,7 +243,7 @@ def load_data(AUDIO_MAX_LENGTH,
                     else:
                         # tsv_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.tsv'.format(split))
                         # txt_fn = os.path.join(muavic_root, 'muavic', lang, 'muavic_normalized', '{}.{}'.format(split, lang))
-                        tsv_fn = os.path.join(muavic_root, 'muavic', lang, '{}.tsv'.format(split))
+                        tsv_fn = os.path.join(muavic_root, 'muavic', lang, '{}_m.tsv'.format(split))
                         txt_fn = os.path.join(muavic_root, 'muavic', lang, '{}.{}'.format(split, lang))
                 elif task == 'En-X': # EN-X translation                    
                     tsv_fn = os.path.join(muavic_root, 'muavic', 'en', lang, '{}.tsv'.format(split))
@@ -256,12 +257,14 @@ def load_data(AUDIO_MAX_LENGTH,
                     audio_lns = tsv.readlines()[1:]
                     txt_lns = txt.readlines()
                     # audio_path, audio_length, text, text_length, video_length
-                    wav_fns = [(audio.strip().split('\t')[2],  
-                                int(audio.strip().split('\t')[-1]), 
-                                txt.strip(), 
-                                len(txt.strip()), 
-                                int(audio.strip().split('\t')[-2])) 
-                                for audio, txt in zip(audio_lns, txt_lns)]
+                    wav_fns = [(
+                        os.path.join(muavic_root, 'muavic', audio.strip().split('\t')[2]),  
+                        int(audio.strip().split('\t')[-1]), 
+                        txt.strip(), 
+                        len(txt.strip()), 
+                        int(audio.strip().split('\t')[-2])) 
+                        for audio, txt in zip(audio_lns, txt_lns
+                    )]
                     # pre_video_check = len(wav_fns)
                     # Check if the video length is greater than 0 
                     # wav_fns =  list(filter(lambda x: x[4] > 0, wav_fns))

@@ -30,6 +30,7 @@ dropout_rate: 0
 lang: ar
 vc2: False
 vc2_path: ''
+muavic_root: 'E:/dataset/'
 resume_training: false
 
 train_id: whisper_en-x_small
